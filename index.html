@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>NFT Knight</title>
+		<script
+			src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"
+			type="application/javascript"
+		></script>
+		<script src="https://cdn.jsdelivr.net/npm/phaser@3.15.1/dist/phaser-arcade-physics.min.js"></script>
+		<script type="module" src="eth.js"></script>
+		<script type="module" src="GameToken.js"></script>
+	</head>
+	<body>
+		<h1>NFT Knight</h1>
+		<br />
+		<button onclick="buyItem(1)">Buy Pump Talisman, 0.0001 POT</button>
+		<button onclick="buyItem(2)">Buy Super Boots, 0.0002 POT</button>
+		<button onclick="buyItem(3)">Buy Timewarp Cape, 0.0003 POT</button>
+		<br />
+		<br />
+		<script>
+			//Control variables
+			var cursors;
+
+			//Sprite variables
+			var knight;
+			var crates;
+
+			//Game variables
+			var score = 0;
+			var secondsLeft = 60;
+
+			//Timer variables
+			var coinTimer;
+			var timeLeftTimer;
+
+			//Text variables
+			var scoreText;
+			var timeLeftText;
+
+			var gameOver = false;
+			var coinsSent = false;
+
+			//Item variables
+			//Pump talisman
+			var COIN_GENERATION_INTERVAL = 3000;
+			//SuperBoots
+			var PLAYER_SPEED = 300;
+			//Timewarp Cape
+			var GAME_SECOND = 1000;
+
+
+			//Initialize game
+			var config = {
+				type: Phaser.AUTO,
+				width: 1000,
+				height: 600,
+				physics: {
+					default: "arcade",
+					arcade: {
+						gravity: { y: 800 },
+						debug: false,
+					},
+				},
+				scene: {
+					preload: preload,
+					create: create,
+					update: update,
+				},
+			};
+
+			var game;
+			
+			getUserItems(function() {
+				game = new Phaser.Game(config);
+			})
+
+			function preload() {
+				console.log("Loading assets");
+				this.load.image("forest", "./assets/background.png");
+				this.load.image("knight", "./assets/knight.png");
+				this.load.image("crate", "./assets/crate.png");
+				this.load.image("coin", "./assets/bitcoin.png");
+
+				//Load run animation
+				this.load.image("run_frame_1", "./assets/knight/run/Run (1).png");
+				this.load.image("run_frame_2", "./assets/knight/run/Run (2).png");
+				this.load.image("run_frame_3", "./assets/knight/run/Run (3).png");
+				this.load.image("run_frame_4", "./assets/knight/run/Run (4).png");
+				this.load.image("run_frame_5", "./assets/knight/run/Run (5).png");
+				this.load.image("run_frame_6", "./assets/knight/run/Run (6).png");
+				this.load.image("run_frame_7", "./assets/knight/run/Run (7).png");
+				this.load.image("run_frame_8", "./assets/knight/run/Run (8).png");
+				this.load.image("run_frame_9", "./assets/knight/run/Run (9).png");
+				this.load.image("run_frame_10", "./assets/knight/run/Run (10).png");
+
+				//Load idle animation
+				this.load.image("idle_frame_1", "./assets/knight/idle/Idle (1).png");
+				this.load.image("idle_frame_2", "./assets/knight/idle/Idle (2).png");
+				this.load.image("idle_frame_3", "./assets/knight/idle/Idle (3).png");
+				this.load.image("idle_frame_4", "./assets/knight/idle/Idle (4).png");
+				this.load.image("idle_frame_5", "./assets/knight/idle/Idle (5).png");
+				this.load.image("idle_frame_6", "./assets/knight/idle/Idle (6).png");
+				this.load.image("idle_frame_7", "./assets/knight/idle/Idle (7).png");
+				this.load.image("idle_frame_8", "./assets/knight/idle/Idle (8).png");
+				this.load.image("idle_frame_9", "./assets/knight/idle/Idle (9).png");
+				this.load.image("idle_frame_10", "./assets/knight/idle/Idle (10).png");
+			}
+
+			function create() {
+				console.log("Setting up");
+
+				//load background
+				this.add.image(500, 300, "forest");
+
+				//Draw and scale knight
+				knight = this.physics.add.sprite(100, 100, "knight");
+				knight.body.setSize(185, 600, 10, 0);
+				knight.scaleX = 0.15;
+				knight.scaleY = knight.scaleX;
+
+				//create floor with crates
+				crates = this.physics.add.staticGroup();
+				this.physics.add.collider(crates, knight);
+				crates.create(40, 562, "crate");
+				crates.create(115, 562, "crate");
+				crates.create(190, 562, "crate");
+				crates.create(265, 562, "crate");
+				crates.create(340, 562, "crate");
+				crates.create(850, 562, "crate");
+				crates.create(925, 562, "crate");
+				crates.create(1000, 562, "crate");
+
+				//Platform crates
+				crates.create(100, 262, "crate");
+				crates.create(175, 262, "crate");
+				crates.create(440, 462, "crate");
+				crates.create(540, 312, "crate");
+				crates.create(300, 362, "crate");
+				crates.create(650, 482, "crate");
+				crates.create(725, 482, "crate");
+				crates.create(800, 182, "crate");
+				crates.create(875, 182, "crate");
+
+				//Create animations
+				this.anims.create({
+					key: "knight_run",
+					frames: [
+						{ key: "run_frame_1" },
+						{ key: "run_frame_2" },
+						{ key: "run_frame_3" },
+						{ key: "run_frame_4" },
+						{ key: "run_frame_5" },
+						{ key: "run_frame_6" },
+						{ key: "run_frame_7" },
+						{ key: "run_frame_8" },
+						{ key: "run_frame_9" },
+						{ key: "run_frame_10" },
+					],
+					frameRate: 10,
+					repeat: 1,
+				});
+
+				this.anims.create({
+					key: "knight_idle",
+					frames: [
+						{ key: "idle_frame_1" },
+						{ key: "idle_frame_2" },
+						{ key: "idle_frame_3" },
+						{ key: "idle_frame_4" },
+						{ key: "idle_frame_5" },
+						{ key: "idle_frame_6" },
+						{ key: "idle_frame_7" },
+						{ key: "idle_frame_8" },
+						{ key: "idle_frame_9" },
+						{ key: "idle_frame_10" },
+					],
+					frameRate: 10,
+					repeat: 1,
+				});
+
+				//Text
+				scoreText = this.add.text(16, 16, `Bitcoin Bag: ${score}`, {
+					fontSize: "24px",
+					fill: "#000",
+				});
+
+				timeLeftText = this.add.text(
+					16,
+					48,
+					`Time Left: ${secondsLeft} seconds`,
+					{
+						fontSize: "24px",
+						fill: "#f00",
+					}
+				);
+
+				//Key inputs
+				cursors = this.input.keyboard.createCursorKeys();
+
+				//Coin timer
+				coinTimer = this.time.addEvent({
+					delay: COIN_GENERATION_INTERVAL,
+					callback: generateCoins,
+					callbackScope: this,
+					repeat: -1,
+				});
+
+				//Game Timer
+				timeLeftTimer = this.time.addEvent({
+					delay: GAME_SECOND,
+					callback: updateTime,
+					callbackScope: this,
+					repeat: -1,
+				});
+			}
+
+			function generateCoins() {
+				var coins = this.physics.add.group({
+					key: "coin",
+					repeat: 1,
+					setXY: {
+						x: Phaser.Math.Between(0, 1000),
+						y: -100,
+						stepX: Phaser.Math.Between(30, 100),
+					},
+				});
+
+				coins.children.iterate(function (coin) {
+					coin.setBounceY(Phaser.Math.FloatBetween(0.4, 0.5));
+				});
+
+				this.physics.add.collider(coins, crates);
+				this.physics.add.overlap(knight, coins, collectCoin, null, this);
+			}
+
+			function collectCoin(knight, coin) {
+				coin.disableBody(true, true);
+				score++;
+				scoreText.setText(`Bitcoin Bag: ${score}`);
+				console.log(`Score: ${score}`);
+			}
+
+			function updateTime() {
+				if (gameOver) {
+					if (!coinsSent) {
+						var address = prompt(
+							"Where would you like to send your tokens? (ETH Address)"
+						);
+						if (address == null || address == "") {
+							alert("Transaction cancelled");
+						} else {
+							window.mintAfterGame(
+								address,
+								ethers.utils.parseEther(score.toString())
+							);
+						}
+						coinsSent = true;
+					}
+					return;
+				}
+				secondsLeft--;
+				timeLeftText.setText(`Time Left: ${secondsLeft} seconds`);
+				if (secondsLeft <= 0) {
+					this.physics.pause();
+					gameOver = true;
+				}
+			}
+
+			function update() {
+				if (cursors.left.isDown) {
+					knight.setVelocityX(-PLAYER_SPEED);
+					knight.play("knight_run", true);
+					knight.flipX = true;
+				} else if (cursors.right.isDown) {
+					knight.setVelocityX(PLAYER_SPEED);
+					knight.play("knight_run", true);
+					knight.flipX = false;
+				} else {
+					knight.setVelocityX(0);
+					knight.play("knight_idle", true);
+				}
+
+				if (cursors.up.isDown && knight.body.touching.down) {
+					knight.setVelocityY(-550);
+				}
+			}
+		</script>
+	</body>
+</html>
